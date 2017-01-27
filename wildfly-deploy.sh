@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/usr/bin/env bash 
 
 # universal deploy script for jenkins->wildfly deployments
 # b2c@dest-unreachable.net
