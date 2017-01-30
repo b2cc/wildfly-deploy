@@ -1,8 +1,8 @@
-#!/usr/bin/env bash 
+#!/usr/bin/env bash
 
 # universal deploy script for jenkins->wildfly deployments
 # b2c@dest-unreachable.net
-# 24.01.2017
+# 30.01.2017
 # License: GPLv2
 
 SSHUSER=""
@@ -93,7 +93,7 @@ while getopts "C:H:P:S:hu:p:eA:a:b:" opt; do
      HAPROXY_PORT="${OPTARG}";;
 
     b)
-     HAPROXY_BACKEND+="("${OPTARG}")";;
+     HAPROXY_BACKEND+=("${OPTARG}");;
   esac
 done
 shift $((OPTIND -1))
@@ -127,9 +127,9 @@ echo " ## ** DEPLOYMENT SUMMARY ** ##
  local artifact:  ${POM_ARTIFACTID}-${POM_VERSION}
 
  deploy to:"
-for server in "${SERVER[@]}"; do
+for server in ${SERVER[@]}; do
   echo "        - ${server}"
-done  
+done
 
 if [[ "${HAPROXY_MGMT}" -ne 0 ]]; then
   if ! [[ -x $(which socat 2>/dev/null) ]]; then
@@ -144,14 +144,13 @@ if [[ "${HAPROXY_MGMT}" -ne 0 ]]; then
  ## HAProxy Management during Deployment enabled ##
  HAProxy Host:    ${HAPROXY_HOST}
  HAProxy Port:    ${HAPROXY_PORT}
- HAProxy Backend: ${HAPROXY_BACKEND}
 "
-  for haproxybackend in "${HAPROXY_BACKEND[@]}"; do
+  for haproxybackend in ${HAPROXY_BACKEND[@]}; do
     echo " HAProxy Backend: ${haproxybackend}"
     echo "  HAProxy Backend ${haproxybackend} servers:"
     echo "show servers state ${haproxybackend}" \
       | ${TALK2HAPROXY} \
-      | grep "${haproxybackend}" \
+      | grep ${haproxybackend} \
       | awk '{print "   backend: "$2,"  - server: "$4, "/ ip: "$5 }'
   done
 fi
@@ -162,7 +161,7 @@ echo "
  ###############################
 "
 
-for server in "${SERVER[@]}"; do
+for server in ${SERVER[@]}; do
 
   # determine remote artifact
   REMOTE_ARTIFACT=$( ${SSHPASS} -p ${SSHPASSWD} \
@@ -189,7 +188,7 @@ for server in "${SERVER[@]}"; do
   # TODO: wait until all clients have migrated to other server
   #       in case of multi-server deployment
   if [[ "${HAPROXY_MGMT}" -ne 0 ]]; then
-    for haproxybackend in "${HAPROXY_BACKEND[@]}"; do
+    for haproxybackend in ${HAPROXY_BACKEND[@]}; do
       echo "  -- setting server ${server} on HAProxy backend ${haproxybackend} to MAINT"
       echo "set server ${haproxybackend}/${server} state maint" | ${TALK2HAPROXY}
     done
@@ -225,7 +224,7 @@ for server in "${SERVER[@]}"; do
 
   # set haproxy backend server to READY
   if [[ "${HAPROXY_MGMT}" -ne 0 ]]; then
-    for haproxybackend in "${HAPROXY_BACKEND[@]}"; do
+    for haproxybackend in ${HAPROXY_BACKEND[@]}; do
       echo "  -- setting server ${server} on HAProxy backend ${haproxybackend} to READY"
       echo "set server ${haproxybackend}/${server} state ready" | ${TALK2HAPROXY}
     done
