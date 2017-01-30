@@ -174,7 +174,8 @@ for server in ${SERVER[@]}; do
                    )
   echo -en "\n
  - remote server ${server} currently deployed artifact: ${REMOTE_ARTIFACT}
-   starting deployment:\n"
+
+ - starting deployment:\n"
 
   # copy new artifact to server(s)
   echo "  -- copy new artifact ${POM_ARTIFACTID}-${POM_VERSION} to server ${server} /tmp..."
@@ -189,7 +190,7 @@ for server in ${SERVER[@]}; do
   #       in case of multi-server deployment
   if [[ "${HAPROXY_MGMT}" -ne 0 ]]; then
     for haproxybackend in ${HAPROXY_BACKEND[@]}; do
-      echo "  -- setting server ${server} on HAProxy backend ${haproxybackend} to MAINT"
+      echo -en "  -- setting server ${server} on HAProxy backend ${haproxybackend} to MAINT"
       echo "set server ${haproxybackend}/${server} state maint" | ${TALK2HAPROXY}
     done
   fi
@@ -225,7 +226,7 @@ for server in ${SERVER[@]}; do
   # set haproxy backend server to READY
   if [[ "${HAPROXY_MGMT}" -ne 0 ]]; then
     for haproxybackend in ${HAPROXY_BACKEND[@]}; do
-      echo "  -- setting server ${server} on HAProxy backend ${haproxybackend} to READY"
+      echo -en "  -- setting server ${server} on HAProxy backend ${haproxybackend} to READY"
       echo "set server ${haproxybackend}/${server} state ready" | ${TALK2HAPROXY}
     done
   fi
