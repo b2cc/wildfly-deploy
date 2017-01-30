@@ -46,7 +46,8 @@ echo "
   -e   enable HAProxy management during deployment
   -A   haproxy server name / IPv4 address
   -a   haproxy control socket port (stats socket: level admin)
-  -b   HTTP backend
+  -b   HTTP backend(s) to en/disable. can be specified multiple times,
+        e.g.: -b http_app1 -b http_app2 ...
 "
 exit 0
 }
@@ -92,7 +93,7 @@ while getopts "C:H:P:S:hu:p:eA:a:b:" opt; do
      HAPROXY_PORT="${OPTARG}";;
 
     b)
-     HAPROXY_BACKEND="${OPTARG}";;
+     HAPROXY_BACKEND+="("${OPTARG}")";;
   esac
 done
 shift $((OPTIND -1))
@@ -144,13 +145,15 @@ if [[ "${HAPROXY_MGMT}" -ne 0 ]]; then
  HAProxy Host:    ${HAPROXY_HOST}
  HAProxy Port:    ${HAPROXY_PORT}
  HAProxy Backend: ${HAPROXY_BACKEND}
-
- HAProxy Backend ${HAPROXY_BACKEND} servers:
 "
-  echo "show servers state ${HAPROXY_BACKEND}" \
-    | ${TALK2HAPROXY} \
-    | grep "${HAPROXY_BACKEND}" \
-    | awk '{print "  backend: "$2,"  - server: "$4, "/ ip: "$5 }'
+  for haproxybackend in "${HAPROXY_BACKEND[@]}"; do
+    echo " HAProxy Backend: ${haproxybackend}"
+    echo "  HAProxy Backend ${haproxybackend} servers:"
+    echo "show servers state ${haproxybackend}" \
+      | ${TALK2HAPROXY} \
+      | grep "${haproxybackend}" \
+      | awk '{print "   backend: "$2,"  - server: "$4, "/ ip: "$5 }'
+  done
 fi
 
 echo "
@@ -185,10 +188,11 @@ for server in "${SERVER[@]}"; do
   # set haproxy backend server to MAINT
   # TODO: wait until all clients have migrated to other server
   #       in case of multi-server deployment
-
   if [[ "${HAPROXY_MGMT}" -ne 0 ]]; then
-    echo "  -- setting server ${server} on HAProxy backend ${HAPROXY_BACKEND} to MAINT"
-    echo "set server ${HAPROXY_BACKEND}/${server} state maint" | ${TALK2HAPROXY}
+    for haproxybackend in "${HAPROXY_BACKEND[@]}"; do
+      echo "  -- setting server ${server} on HAProxy backend ${haproxybackend} to MAINT"
+      echo "set server ${haproxybackend}/${server} state maint" | ${TALK2HAPROXY}
+    done
   fi
 
   # undeploy old artifact
@@ -198,7 +202,7 @@ for server in "${SERVER[@]}"; do
                   ${SSHUSER}@${server} "${CONTROLLER_CLI} \
                   --connect \
                   --controller=${CONTROLLER_HOST}:${CONTROLLER_PORT} \
-                  --commands='undeploy ${REMOTE_ARTIFACT}'"
+                  --commands='undeploy ${REMOTE_ARTIFACT}' 2>&1 >/dev/null"
   if ! [[ $? -eq 0 ]]; then echo "undeploy failed, exiting."; exit 1; fi
   echo "  -- undeployment of old artifact finished."
 
@@ -221,8 +225,10 @@ for server in "${SERVER[@]}"; do
 
   # set haproxy backend server to READY
   if [[ "${HAPROXY_MGMT}" -ne 0 ]]; then
-    echo "  -- setting server ${server} on HAProxy backend ${HAPROXY_BACKEND} to READY"
-    echo "set server ${HAPROXY_BACKEND}/${server} state ready" | ${TALK2HAPROXY}
+    for haproxybackend in "${HAPROXY_BACKEND[@]}"; do
+      echo "  -- setting server ${server} on HAProxy backend ${haproxybackend} to READY"
+      echo "set server ${haproxybackend}/${server} state ready" | ${TALK2HAPROXY}
+    done
   fi
 
 done
